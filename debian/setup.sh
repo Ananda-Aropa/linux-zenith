@@ -1,7 +1,7 @@
 #!/bin/bash
 # shellcheck disable=2086,2103,2164,2317
 
-cd "$(dirname "$0")"
+cd "$(dirname "$0")"/..
 
 # avoid command failure
 exit_check() { [ "$1" = 0 ] || exit "$1"; }

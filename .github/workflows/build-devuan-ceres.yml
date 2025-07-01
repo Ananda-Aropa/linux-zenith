@@ -38,7 +38,7 @@ jobs:
       - name: Build DEB package
         uses: DevChall-by-SDCY-and-VXM/debian-buildpackage-template@main
         with:
-          distro: debian:unstable-slim
+          distro: ghcr.io/shadichy/aaropa_rootfs_builder:main
           arch: amd64
           docker_arch_specific: true
 
