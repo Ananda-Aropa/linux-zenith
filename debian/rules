@@ -49,7 +49,7 @@ endif
 
 TARGET_OUT := rootfs
 $(TARGET_OUT):
-	mkdir -p $(TARGET_OUT)
+	mkdir -p $(TARGET_OUT) $(KBUILD_OUTPUT)
 
 INSTALLED_KERNELIMAGE_TARGET := vmlinuz
 
