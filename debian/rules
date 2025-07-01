@@ -1,0 +1,138 @@
+#!/usr/bin/make -f
+
+TARGET_CLANG_PATH := /opt/android/clang/bin
+
+ifeq ($(TARGET_ARCH),)
+ifeq ($(DEB_TARGET_ARCH), amd64)
+TARGET_ARCH := x86_64
+else ifeq ($(DEB_TARGET_ARCH), i386)
+TARGET_ARCH := x86
+else
+$(error not implemented)
+endif
+endif
+
+KERNEL_DIR ?= .
+LIB_DEST := /usr/lib
+FIRMWARE_DEST := $(LIB_DEST)/firmware
+
+TARGET_KERNEL_ARCH := $(TARGET_ARCH)
+KERNEL_TARGET := bzImage
+TARGET_KERNEL_CONFIG ?= android-$(TARGET_KERNEL_ARCH)_defconfig
+KERNEL_CONFIG_DIR := arch/x86/configs
+
+ifeq ($(TARGET_KERNEL_ARCH),x86_64)
+KERNEL_CLANG_FLAGS := 
+	LLVM=1 \
+	CC=$(TARGET_CLANG_PATH)/clang \
+	LD=$(TARGET_CLANG_PATH)/ld.lld \
+	AR=$(TARGET_CLANG_PATH)/llvm-ar \
+	NM=$(TARGET_CLANG_PATH)/llvm-nm \
+	OBJCOPY=$(TARGET_CLANG_PATH)/llvm-objcopy \
+	OBJDUMP=$(TARGET_CLANG_PATH)/llvm-objdump \
+	READELF=$(TARGET_CLANG_PATH)/llvm-readelf \
+	OBJSIZE=$(TARGET_CLANG_PATH)/llvm-size \
+	STRIP=$(TARGET_CLANG_PATH)/llvm-strip \
+	HOSTCC=$(TARGET_CLANG_PATH)/clang \
+	HOSTCXX=$(TARGET_CLANG_PATH)/clang++ \
+	HOSTLD=$(TARGET_CLANG_PATH)/ld.lld \
+	HOSTLDFLAGS=-fuse-ld=lld \
+	HOSTAR=$(TARGET_CLANG_PATH)/llvm-ar
+endif
+
+KBUILD_OUTPUT := kernel_out
+ifeq ($(HOST_OS),darwin)
+KBUILD_JOBS := $(shell /usr/sbin/sysctl -n hw.ncpu)
+else
+KBUILD_JOBS := $(shell echo $$((1-(`cat /sys/devices/system/cpu/present`))))
+endif
+TARGET_OUT := $(KBUILD_OUTPUT)/rootfs
+$(TARGET_OUT):
+	mkdir -p $(TARGET_OUT)
+
+INSTALLED_KERNELIMAGE_TARGET := vmlinuz
+
+M4 := $(shell command -v m4)
+BISON := $(shell command -v bison)
+LEX := $(shell command -v lex)
+DEPMOD := $(shell command -v depmod)
+PERL := $(shell command -v perl)
+
+mk_kernel := + $(shell command -v make) -j$(KBUILD_JOBS) -l$$(($(KBUILD_JOBS)+2)) \
+	-C $(KERNEL_DIR) O=$(abspath $(KBUILD_OUTPUT)) ARCH=$(TARGET_ARCH) CROSS_COMPILE=$(CROSS_COMPILE) \
+	YACC=$(abspath $(BISON)) LEX=$(abspath $(LEX)) M4=$(abspath $(M4)) DEPMOD=$(DEPMOD) PERL=$(PERL) \
+	$(KERNEL_CLANG_FLAGS)
+
+KERNEL_CONFIG_FILE := $(if $(wildcard $(TARGET_KERNEL_CONFIG)),$(TARGET_KERNEL_CONFIG),$(KERNEL_DIR)/$(KERNEL_CONFIG_DIR)/$(TARGET_KERNEL_CONFIG))
+$(KERNEL_CONFIG_FILE):
+
+MOD_ENABLED := $(shell grep ^CONFIG_MODULES=y $(KERNEL_CONFIG_FILE))
+FIRMWARE_ENABLED := $(shell grep ^CONFIG_FIRMWARE_IN_KERNEL=y $(KERNEL_CONFIG_FILE))
+HEADERS_ENABLED := true
+
+# I understand Android build system discourage to use submake,
+# but I don't want to write a complex Android.mk to build kernel.
+# This is the simplest way I can think.
+KERNEL_DOTCONFIG_FILE := $(KBUILD_OUTPUT)/.config
+ifneq ($(filter 0,$(shell grep -s ^$(if $(filter x86,$(TARGET_KERNEL_ARCH)),\#.)CONFIG_64BIT $(KERNEL_DOTCONFIG_FILE) | wc -l)),)
+KERNEL_ARCH_CHANGED := $(KERNEL_DOTCONFIG_FILE)-
+$(KERNEL_ARCH_CHANGED):
+	@touch $@
+endif
+
+TARGET_KERNEL_DIFFCONFIG := selinux_diffconfig
+$(TARGET_KERNEL_DIFFCONFIG):
+
+$(KERNEL_DOTCONFIG_FILE): $(KERNEL_CONFIG_FILE) $(wildcard $(TARGET_KERNEL_DIFFCONFIG)) $(KERNEL_ARCH_CHANGED)
+	mkdir -p $(@D) && cat $(wildcard $^) > $@
+	rm -f $(KERNEL_ARCH_CHANGED)
+
+BUILT_KERNEL_TARGET := $(KBUILD_OUTPUT)/arch/$(TARGET_ARCH)/boot/$(KERNEL_TARGET)
+$(BUILT_KERNEL_TARGET): $(TARGET_OUT) $(KERNEL_DOTCONFIG_FILE)
+	# A dirty hack to use ar & ld
+	$(mk_kernel) olddefconfig
+	$(mk_kernel) $(KERNEL_TARGET) $(if $(MOD_ENABLED),modules)
+	$(if $(FIRMWARE_ENABLED),$(mk_kernel) INSTALL_MOD_PATH=$(abspath $(TARGET_OUT)) firmware_install)
+
+$(INSTALLED_KERNELIMAGE_TARGET): $(BUILT_KERNEL_TARGET)
+	cp $(BUILT_KERNEL_TARGET) $(firstword $(wildcard $(TARGET_OUT)/lib/modules/*/))/$(INSTALLED_KERNELIMAGE_TARGET)
+
+ifneq ($(MOD_ENABLED),)
+KERNEL_MODULES_DEP := $(firstword $(wildcard $(TARGET_OUT)/lib/modules/*/modules.dep))
+KERNEL_MODULES_DEP := $(if $(KERNEL_MODULES_DEP),$(KERNEL_MODULES_DEP),$(TARGET_OUT)/lib/modules)
+
+TARGET_EXTRA_KERNEL_MODULES := 
+ifneq ($(filter efi_img,$(MAKECMDGOALS)),)
+TARGET_KERNEL_ARCH ?= x86_64
+endif
+
+ALL_EXTRA_MODULES := $(patsubst %,$(TARGET_OUT)/kmodule/%,$(TARGET_EXTRA_KERNEL_MODULES))
+$(ALL_EXTRA_MODULES): $(TARGET_OUT)/kmodule/%: $(BUILT_KERNEL_TARGET) | $(ACP)
+	@echo Building additional kernel module $*
+	mkdir -p $(@D) && $(ACP) -fr $(EXTRA_KERNEL_MODULE_PATH_$*) $(@D)
+	$(mk_kernel) M=$(abspath $@) modules || ( rm -rf $@ && exit 1 )
+
+$(KERNEL_MODULES_DEP): $(BUILT_KERNEL_TARGET) $(ALL_EXTRA_MODULES)
+	rm -rf $(TARGET_OUT)/lib/modules
+	$(mk_kernel) INSTALL_MOD_PATH=$(abspath $(TARGET_OUT)) modules_install
+	+ for kmod in $(TARGET_EXTRA_KERNEL_MODULES) ; do \
+		echo Installing additional kernel module $${kmod} ; \
+		$(subst +,,$(subst $(hide),,$(mk_kernel))) INSTALL_MOD_PATH=$(abspath $(TARGET_OUT)) M=$(abspath $(TARGET_OUT))/kmodule/$${kmod} modules_install ; \
+	done
+	rm -f $(TARGET_OUT)/lib/modules/*/source
+	mkdir -p $(TARGET_OUT)/headers/
+	mv $(TARGET_OUT)/{,headers/}lib/modules/*/build
+endif
+
+override_dh_clean:
+
+override_dh_auto_clean:
+
+override_dh_auto_configure:
+	dh_auto_configure -- $(KERNEL_CLANG_FLAGS)
+
+override_dh_auto_build: $(KERNEL_MODULES_DEP) $(INSTALLED_KERNELIMAGE_TARGET)
+
+%:
+	dh $@ --builddirectory=$(TARGET_OUT)
+

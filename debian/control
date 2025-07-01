@@ -1,0 +1,41 @@
+Source: linux-zenith
+Section: unknown
+Priority: optional
+Maintainer: Shadichy <shadichy@blisslabs.org>
+Rules-Requires-Root: no
+Build-Depends:
+ debhelper-compat (= 13),
+ clang-android [amd64],
+ kmod,
+ build-essential,
+ linux-source,
+ bc,
+ cpio,
+ flex,
+ libncurses5-dev,
+ libelf-dev,
+ libssl-dev,
+ dwarves,
+ bison
+Standards-Version: 4.7.2
+Homepage: https://github.com/shadichy/linux-zenith
+Vcs-Browser: https://github.com/shadichy/linux-zenith
+Vcs-Git: https://github.com/shadichy/linux-zenith.git
+
+Package: linux-zenith
+Architecture: amd64
+Provides: linux-image, linux-modules
+Depends:
+ ${shlibs:Depends},
+ ${misc:Depends},
+Description: Android Common Kernels
+ By BlissLabs & AndroidGeneric
+
+Package: linux-zenith-headers
+Architecture: amd64
+Provides: linux-headers
+Depends:
+ ${shlibs:Depends},
+ ${misc:Depends},
+Description: Android Common Kernels - headers
+ By BlissLabs & AndroidGeneric
