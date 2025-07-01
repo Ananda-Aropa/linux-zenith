@@ -40,13 +40,14 @@ KERNEL_CLANG_FLAGS :=
 	HOSTAR=$(TARGET_CLANG_PATH)/llvm-ar
 endif
 
-KBUILD_OUTPUT := kernel_out
+KBUILD_OUTPUT := build
 ifeq ($(HOST_OS),darwin)
 KBUILD_JOBS := $(shell /usr/sbin/sysctl -n hw.ncpu)
 else
 KBUILD_JOBS := $(shell echo $$((1-(`cat /sys/devices/system/cpu/present`))))
 endif
-TARGET_OUT := $(KBUILD_OUTPUT)/rootfs
+
+TARGET_OUT := rootfs
 $(TARGET_OUT):
 	mkdir -p $(TARGET_OUT)
 
@@ -121,10 +122,9 @@ $(KERNEL_MODULES_DEP): $(BUILT_KERNEL_TARGET) $(ALL_EXTRA_MODULES)
 	done
 	rm -f $(TARGET_OUT)/lib/modules/*/source
 	mkdir -p $(TARGET_OUT)/headers/
-	mv $(TARGET_OUT)/{,headers/}lib/modules/*/build
+	env TARGET=$(shell echo $(firstword $(wildcard $(TARGET_OUT)/lib/modules/*/build)) | sed -e 's|/lib/|/headers/lib/|') sh -c 'mkdir -p $$TARGET; cp -rfdt $$TARGET $(TARGET_OUT)/lib/modules/*/build/*'
+	rm -f $(TARGET_OUT)/lib/modules/*/build
 endif
-
-override_dh_clean:
 
 override_dh_auto_clean:
 
