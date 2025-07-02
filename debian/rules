@@ -120,17 +120,37 @@ $(KERNEL_MODULES_DEP): $(BUILT_KERNEL_TARGET) $(ALL_EXTRA_MODULES)
 		echo Installing additional kernel module $${kmod} ; \
 		$(subst +,,$(subst $(hide),,$(mk_kernel))) INSTALL_MOD_PATH=$(abspath $(TARGET_OUT)) M=$(abspath $(TARGET_OUT))/kmodule/$${kmod} modules_install ; \
 	done
-	rm -f $(TARGET_OUT)/lib/modules/*/source
-	env TARGET=$$(ls -d $(TARGET_OUT)/lib/modules/*/build/ | head -1 | sed -e 's|/lib/|/headers/lib/|') sh -c 'mkdir -p $$TARGET; cp -rfdt $$TARGET $(KBUILD_OUTPUT)/*'
-	rm -f $(TARGET_OUT)/lib/modules/*/build
+	rm -f $(TARGET_OUT)/lib/modules/*/{source,build}
 endif
+
+STRIP_BINARIES := --strip-all
+STRIP_SHARED := --strip-unneeded
+STRIP_STATIC := --strip-debug
+
+KERNEL_HEADERS := headers
+$(KERNEL_HEADERS):
+	rm -r $(KBUILD_OUTPUT)/Documentation
+	find -L $(KBUILD_OUTPUT) -type l -printf "Removing %P\n" -delete
+	find $(KBUILD_OUTPUT) -type f -name '*.o' -printf "Removing %P\n" -delete
+	- while read -rd "" file; do \
+		case "$$(file -Sib "$$file")" in \
+		application/x-sharedlib\;*) strip -v $(STRIP_SHARED) "$$file" ;; \
+		application/x-archive\;*) strip -v $(STRIP_STATIC) "$$file" ;; \
+		application/x-executable\;*) strip -v $(STRIP_BINARIES) "$$file" ;; \
+		application/x-pie-executable\;*) strip -v $(STRIP_SHARED) "$$file" ;; \
+		esac; \
+	done < <(find $(KBUILD_OUTPUT) -type f -perm -u+x ! -name vmlinux -print0)
+	strip -v $(STRIP_STATIC) $(KBUILD_OUTPUT)/vmlinux
+	env TARGET=$$(ls -d $(TARGET_OUT)/lib/modules/*/build/ | head -1 | sed -e 's|/lib/|/headers/lib/|') sh -c 'mkdir -p $$TARGET; cp -rfdt $$TARGET $(KBUILD_OUTPUT)/*'
 
 override_dh_auto_clean:
 
 override_dh_auto_configure:
 	dh_auto_configure -- $(KERNEL_CLANG_FLAGS)
 
-override_dh_auto_build: $(KERNEL_MODULES_DEP) $(INSTALLED_KERNELIMAGE_TARGET)
+override_dh_auto_build: $(KERNEL_MODULES_DEP) $(INSTALLED_KERNELIMAGE_TARGET) $(KERNEL_HEADERS)
+
+override_dh_strip:
 
 %:
 	dh $@ --builddirectory=$(KBUILD_OUTPUT)

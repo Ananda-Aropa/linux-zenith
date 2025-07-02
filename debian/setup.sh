@@ -21,15 +21,16 @@ cd source
 read MSG DATE MAINTAINER < <(
 	git log -1 \
 		--pretty=format:'%s|%ad|%an <%ae>' \
-		--date=format:'%a, %d %b %Y %H:%M:%S %z'
+		--date=format:'%a, %d %b %Y %H:%M:%S %z' |
+		awk -F'|' '{ print $1; print $2; print $3 }'
 )
 
 parse() {
-  local var="$1"
-  # Try to find the assignment, strip spaces, default to 0 if missing
-  grep -m1 -E "^${var}[[:space:]]*=" "Makefile" \
-    | sed -E "s/^${var}[[:space:]]*=[[:space:]]*(.*)$/\1/" \
-    | tr -d '[:space:]'
+	local var="$1"
+	# Try to find the assignment, strip spaces, default to 0 if missing
+	grep -m1 -E "^${var}[[:space:]]*=" "Makefile" |
+		sed -E "s/^${var}[[:space:]]*=[[:space:]]*(.*)$/\1/" |
+		tr -d '[:space:]'
 }
 
 VERSION=$(parse VERSION)
