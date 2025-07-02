@@ -122,7 +122,7 @@ $(KERNEL_MODULES_DEP): $(BUILT_KERNEL_TARGET) $(ALL_EXTRA_MODULES)
 	done
 	rm -f $(TARGET_OUT)/lib/modules/*/source
 	mkdir -p $(TARGET_OUT)/headers/
-	env TARGET=$(shell echo $(firstword $(wildcard $(TARGET_OUT)/lib/modules/*/build)) | sed -e 's|/lib/|/headers/lib/|') sh -c 'mkdir -p $$TARGET; cp -rfdt $$TARGET $(TARGET_OUT)/lib/modules/*/build/*'
+	env TARGET=$$(ls $(TARGET_OUT)/lib/modules/*/build/ | head -1 | sed -e 's|/lib/|/headers/lib/|') sh -c 'mkdir -p $$TARGET; cp -rfdt $$TARGET $(TARGET_OUT)/lib/modules/*/build/*'
 	rm -f $(TARGET_OUT)/lib/modules/*/build
 endif
 
