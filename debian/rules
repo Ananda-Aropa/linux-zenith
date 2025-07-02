@@ -129,8 +129,7 @@ STRIP_STATIC := --strip-debug
 
 KERNEL_HEADERS := headers
 $(KERNEL_HEADERS):
-	rm -r $(KBUILD_OUTPUT)/Documentation
-	find -L $(KBUILD_OUTPUT) -type l -printf "Removing %P\n" -delete
+	- find -L $(KBUILD_OUTPUT) -type l -printf "Removing %P\n" -delete
 	find $(KBUILD_OUTPUT) -type f -name '*.o' -printf "Removing %P\n" -delete
 	- while read -rd "" file; do \
 		case "$$(file -Sib "$$file")" in \
