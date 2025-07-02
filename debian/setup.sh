@@ -1,5 +1,5 @@
 #!/bin/bash
-# shellcheck disable=2086,2103,2164,2317
+# shellcheck disable=2103,2164
 
 cd "$(dirname "$0")"/..
 
@@ -18,12 +18,9 @@ git clone \
 cd source
 
 # Get variables
-read MSG DATE MAINTAINER < <(
-	git log -1 \
-		--pretty=format:'%s|%ad|%an <%ae>' \
-		--date=format:'%a, %d %b %Y %H:%M:%S %z' |
-		awk -F'|' '{ print $1; print $2; print $3 }'
-)
+MSG=$(git log -1 --pretty=format:'%s')
+DATE=$(git log -1 --pretty=format:'%ad' --date=format:'%a, %d %b %Y %H:%M:%S %z')
+MAINTAINER=$(git log -1 --pretty=format:'%an <%ae>')
 
 parse() {
 	local var="$1"
