@@ -121,8 +121,7 @@ $(KERNEL_MODULES_DEP): $(BUILT_KERNEL_TARGET) $(ALL_EXTRA_MODULES)
 		$(subst +,,$(subst $(hide),,$(mk_kernel))) INSTALL_MOD_PATH=$(abspath $(TARGET_OUT)) M=$(abspath $(TARGET_OUT))/kmodule/$${kmod} modules_install ; \
 	done
 	rm -f $(TARGET_OUT)/lib/modules/*/source
-	mkdir -p $(TARGET_OUT)/headers/
-	env TARGET=$$(ls $(TARGET_OUT)/lib/modules/*/build/ | head -1 | sed -e 's|/lib/|/headers/lib/|') sh -c 'mkdir -p $$TARGET; cp -rfdt $$TARGET $(TARGET_OUT)/lib/modules/*/build/*'
+	env KVER=$(shell basename $(firstword $(wildcard $(TARGET_OUT)/lib/modules/*/))) sh -c 'mkdir -p $(TARGET_OUT)/headers/lib/modules/$$KVER/build; cp -rfdt $(TARGET_OUT)/headers/lib/modules/$$KVER/build $(KBUILD_OUTPUT)/*'
 	rm -f $(TARGET_OUT)/lib/modules/*/build
 endif
 
