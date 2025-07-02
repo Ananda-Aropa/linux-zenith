@@ -36,7 +36,7 @@ jobs:
         run: ./debian/setup.sh
 
       - name: Build DEB package
-        uses: DevChall-by-SDCY-and-VXM/debian-buildpackage-template@main
+        uses: shadichy/build-deb@main
         with:
           distro: ghcr.io/shadichy/aaropa_rootfs_builder:minimal
           arch: amd64
