@@ -42,7 +42,7 @@ cd ..
 cat <<EOF >debian/changelog
 linux-zenith ($VERSION.$PATCHLEVEL.$SUBLEVEL-$EXTRAVERSION) $DISTRO; urgency=medium
 
-$(echo -e "$MSG" | sed -r 's/^/  */g')
+$(echo -e "$MSG" | sed -r 's/^/  * /g')
 
  -- $MAINTAINER  $DATE
 
