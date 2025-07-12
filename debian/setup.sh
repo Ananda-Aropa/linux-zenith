@@ -21,6 +21,7 @@ cd source
 MSG=$(git log -1 --pretty=format:'%s')
 DATE=$(git log -1 --pretty=format:'%ad' --date=format:'%a, %d %b %Y %H:%M:%S %z')
 MAINTAINER=$(git log -1 --pretty=format:'%an <%ae>')
+DISTRO="${DISTRO:-unstable}"
 
 parse() {
 	local var="$1"
