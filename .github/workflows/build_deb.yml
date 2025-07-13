@@ -15,7 +15,7 @@ on:
 
 env:
   REPO: ${{ github.repository }}
-  REF: ${{ github.ref }}
+  REF: main
   REVISION: ${{ github.run_number }}
   AUTHOR: ${{ secrets.RELEASE_USERNAME }}
   PAT: ${{ secrets.RELEASE_TOKEN }}
