@@ -15,7 +15,7 @@ on:
 
 env:
   REPO: ${{ github.repository }}
-  REF: main
+  REF: ${{ github.ref }}
   REVISION: ${{ github.run_number }}
   AUTHOR: ${{ secrets.RELEASE_USERNAME }}
   PAT: ${{ secrets.RELEASE_TOKEN }}
@@ -64,7 +64,7 @@ jobs:
       - name: Build DEB package
         uses: Ananda-Aropa/build-deb@main
         with:
-          distro: debian:unstable-slim
+          distro: ghcr.io/Ananda-Aropa/aaropa_rootfs_base:minimal
           arch: amd64
           docker_arch_specific: true
 
