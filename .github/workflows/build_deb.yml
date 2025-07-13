@@ -64,7 +64,7 @@ jobs:
       - name: Build DEB package
         uses: Ananda-Aropa/build-deb@main
         with:
-          distro: ghcr.io/Ananda-Aropa/aaropa_rootfs_base:minimal
+          distro: ghcr.io/ananda-aropa/aaropa_rootfs_base:minimal
           arch: amd64
           docker_arch_specific: true
 
