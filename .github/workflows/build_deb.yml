@@ -114,7 +114,6 @@ jobs:
 
       - name: Setup variables
         run: |
-          echo "VERSION=$(cat VERSION | cut -d'v' -f2)" >>"$GITHUB_ENV"
           echo "DATE=$(date -u +'%Y%m%d')" >>"$GITHUB_ENV"
 
       - name: Download artifacts
@@ -132,7 +131,7 @@ jobs:
         with:
           token: "${{ secrets.RELEASE_TOKEN }}"
           prerelease: false
-          tag_name: "${{ env.VERSION }}-${{ env.REVISION }}"
-          name: "Release ${{ env.VERSION }}-${{ env.REVISION }}-${{ env.DATE }}"
+          tag_name: "${{ env.BRANCH }}-r${{ env.REVISION }}"
+          name: "Release ${{ env.BRANCH }}-r${{ env.REVISION }}-${{ env.DATE }}"
           files: |
             ${{ steps.download-artifacts.outputs.download-path }}/*
